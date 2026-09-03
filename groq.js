@@ -1,13 +1,12 @@
 // ─────────────────────────────────────────────────────────────
 //  Groq API Wrapper  –  Legal Document Scanner
 // ─────────────────────────────────────────────────────────────
-const dotenv = require("dotenv");
-dotenv.config();
+
 const GROQ_MODEL = "qwen/qwen3.8-27b";
 const GROQ_BASE = "https://api.groq.com/openai/v1/chat/completions";
 
 function getApiKey() {
-  return localStorage.getItem("groq_api_key") || process.env.GROQ_API_KEY;
+  return localStorage.getItem("groq_api_key") || "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";
 }
 
 async function callGroq(prompt, systemInstruction = "") {
