@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LexAI – Legal Document Scanner</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>" />
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-gradient"></div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Header
+═══════════════════════════════════════════════════════════ -->
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 3v1m0 16v1M4.22 4.22l.707.707M18.364 18.364l.707.707M3 12H4m17 0h-1
+             M4.929 18.364l.707-.707M18.364 5.636l.707-.707
+             M9 12a3 3 0 106 0 3 3 0 00-6 0z"/>
+      </svg>
+      LexAI
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="color:var(--text-muted);font-size:0.8rem">Powered by Groq</span>
+      <span style="background:rgba(16,185,129,0.15);color:#34d399;padding:4px 10px;border-radius:99px;font-size:0.75rem;font-weight:700">FREE</span>
+    </div>
+  </div>
+</header>
+
+<!-- Progress bar (global) -->
+<div id="progress-wrap" class="progress-wrap" style="position:sticky;top:64px;z-index:99;margin:0;border-radius:0;">
+  <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Main Content
+═══════════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- ── Hero ────────────────────────────────────────────────── -->
+  <div class="hero">
+    <h1>⚖️ AI Legal Document Scanner</h1>
+    <p>Upload any contract, rental agreement, or employment offer. Get instant risk analysis, plain-language explanations, and expert Q&amp;A — completely free.</p>
+    <div class="hero-badges">
+      <span class="hero-badge">🔴 Risk Detection</span>
+      <span class="hero-badge">📝 Plain Language</span>
+      <span class="hero-badge">🌐 20+ Languages</span>
+      <span class="hero-badge">💬 AI Q&amp;A</span>
+      <span class="hero-badge">⚖️ Version Compare</span>
+      <span class="hero-badge">📊 Export Report</span>
+    </div>
+  </div>
+
+  <!-- ── API Key Setup ─────────────────────────────────────────── -->
+  <div class="api-banner">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#6366f1" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586
+           a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+    </svg>
+    <div style="flex:1">
+      <div style="font-weight:600;margin-bottom:4px">Groq API Key
+        <span style="font-size:0.75rem;color:var(--text-muted);margin-left:8px">
+          Free tier: 15 req/min · 1M tokens/day
+        </span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text-muted)">
+        Get your free key at
+          <a href="https://console.groq.com/keys" target="_blank"
+            style="color:#6366f1;text-decoration:underline">console.groq.com</a>
+          — free developer access
+      </div>
+    </div>
+    <input id="api-key-input" type="password" placeholder="gsk_…" autocomplete="off" />
+    <button class="btn btn-primary btn-sm" id="save-key-btn">Save Key</button>
+    <span id="api-status" style="font-size:0.8rem;white-space:nowrap;color:var(--text-muted)">Not set</span>
+  </div>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────── -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="tab-upload">
+      📤 Upload &amp; Analyze
+    </button>
+    <button class="tab-btn" data-tab="tab-results">
+      📋 Clause Analysis
+    </button>
+    <button class="tab-btn" data-tab="tab-chat">
+      💬 Ask Questions
+    </button>
+    <button class="tab-btn" data-tab="tab-compare">
+      ⚖️ Compare Versions
+    </button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1 – Upload
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-upload" class="tab-panel active">
+    <h2 class="section-title">Upload Your Legal Document</h2>
+    <p class="section-subtitle">Supports rental agreements, employment contracts, vendor agreements, NDAs, and more.</p>
+
+    <!-- Drop Zone -->
+    <div id="upload-zone-1" class="upload-zone">
+      <input type="file" id="file-input-1" accept=".pdf" />
+      <div class="upload-icon">📂</div>
+      <h3>Drag &amp; drop your PDF here</h3>
+      <p>or click to browse files</p>
+      <p style="margin-top:8px;font-size:0.8rem">PDF only · Max 20 MB</p>
+    </div>
+
+    <div id="doc1-name" style="margin:12px 0;color:var(--primary);font-weight:500"></div>
+    <div id="doc1-info" style="font-size:0.8rem;color:var(--text-muted)"></div>
+
+    <!-- Analyze Section -->
+    <div id="analyze-section" style="display:none;margin-top:24px">
+      <div class="card" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:4px">Ready to Analyze</div>
+          <div style="font-size:0.85rem;color:var(--text-muted)">
+            AI will identify clauses, detect risks, explain in plain language, and compare with standard contracts.
+          </div>
+        </div>
+        <button id="analyze-btn" class="btn btn-primary">
+          🔍 Analyze Document
+        </button>
+      </div>
+    </div>
+
+    <!-- Feature Overview Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:40px">
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">🔴</div>
+        <h3 style="margin-bottom:8px">Risk Detection</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          Every clause is rated High, Medium, or Low risk with a clear reason why — so you know what to watch out for.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">📝</div>
+        <h3 style="margin-bottom:8px">Plain Language</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          Dense legal text is rewritten into everyday language you can actually understand without a law degree.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">📊</div>
+        <h3 style="margin-bottom:8px">Standard Comparison</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          See exactly how each clause deviates from a typical fair contract so you can negotiate from a position of knowledge.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">💬</div>
+        <h3 style="margin-bottom:8px">Ask Anything (RAG)</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          Chat with your document. Ask "What is the notice period?" and get answers grounded only in your uploaded file.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">🌐</div>
+        <h3 style="margin-bottom:8px">20+ Language Translation</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          Translate the entire analysis into Hindi, Spanish, French, Arabic, German, Chinese, and 15+ more languages.
+        </p>
+      </div>
+      <div class="card">
+        <div style="font-size:1.5rem;margin-bottom:10px">⚖️</div>
+        <h3 style="margin-bottom:8px">Version Comparison</h3>
+        <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6">
+          Upload two versions and instantly see what changed, whether it's favorable or unfavorable, and why it matters.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2 – Results
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-results" class="tab-panel">
+
+    <div id="results-area" style="display:none">
+
+      <!-- Summary -->
+      <div id="summary-box" class="summary-box" style="display:none">
+        <h3>📌 Executive Summary</h3>
+        <p id="doc-summary"></p>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-number" id="stat-total" style="color:var(--primary)">0</div>
+          <div class="stat-label">Total Clauses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="stat-high" style="color:var(--danger)">0</div>
+          <div class="stat-label">🔴 High Risk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="stat-medium" style="color:var(--warning)">0</div>
+          <div class="stat-label">🟡 Medium Risk</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="stat-low" style="color:var(--success)">0</div>
+          <div class="stat-label">🟢 Low Risk</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <!-- Filter chips -->
+        <button class="chip active" data-filter="All">All Clauses</button>
+        <button class="chip" data-filter="High">🔴 High Risk</button>
+        <button class="chip" data-filter="Medium">🟡 Medium</button>
+        <button class="chip" data-filter="Low">🟢 Low</button>
+
+        <div style="flex:1"></div>
+
+        <!-- Translation -->
+        <select id="lang-select" class="lang-select">
+          <option value="English">🇺🇸 English</option>
+          <option value="Hindi">🇮🇳 Hindi</option>
+          <option value="Spanish">🇪🇸 Spanish</option>
+          <option value="French">🇫🇷 French</option>
+          <option value="German">🇩🇪 German</option>
+          <option value="Arabic">🇸🇦 Arabic</option>
+          <option value="Portuguese">🇧🇷 Portuguese</option>
+          <option value="Chinese (Simplified)">🇨🇳 Chinese</option>
+          <option value="Japanese">🇯🇵 Japanese</option>
+          <option value="Korean">🇰🇷 Korean</option>
+          <option value="Italian">🇮🇹 Italian</option>
+          <option value="Dutch">🇳🇱 Dutch</option>
+          <option value="Russian">🇷🇺 Russian</option>
+          <option value="Turkish">🇹🇷 Turkish</option>
+          <option value="Bengali">🇧🇩 Bengali</option>
+          <option value="Marathi">🇮🇳 Marathi</option>
+          <option value="Tamil">🇮🇳 Tamil</option>
+          <option value="Telugu">🇮🇳 Telugu</option>
+          <option value="Gujarati">🇮🇳 Gujarati</option>
+          <option value="Punjabi">🇮🇳 Punjabi</option>
+          <option value="Urdu">🇵🇰 Urdu</option>
+          <option value="Swahili">🇰🇪 Swahili</option>
+          <option value="Indonesian">🇮🇩 Indonesian</option>
+        </select>
+        <button id="translate-btn" class="btn btn-secondary btn-sm">🌐 Translate</button>
+        <button id="export-btn" class="btn btn-secondary btn-sm">📥 Export HTML</button>
+      </div>
+
+      <!-- Clauses -->
+      <div id="clauses-list"></div>
+
+    </div>
+
+    <!-- Empty state when no document analyzed -->
+    <div id="results-empty" style="">
+      <div class="empty-state" style="display:block" id="results-placeholder">
+        <div class="icon">📋</div>
+        <p style="font-size:1rem;margin-bottom:8px">No analysis yet</p>
+        <p style="font-size:0.85rem">Upload a document and click Analyze to see clause-by-clause results here.</p>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="switchTab('tab-upload')">
+          ← Go to Upload
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 3 – Chat / RAG
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-chat" class="tab-panel">
+    <h2 class="section-title">Ask Questions About Your Document</h2>
+    <p class="section-subtitle">
+      All answers are grounded in your uploaded document only. The AI will not make up information.
+    </p>
+
+    <!-- Example questions -->
+    <div style="margin-bottom:16px">
+      <span style="font-size:0.8rem;color:var(--text-muted);margin-right:8px">Try asking:</span>
+      <button class="chip" onclick="prefillChat('What is the notice period for resignation?')" style="margin-right:6px">Notice period?</button>
+      <button class="chip" onclick="prefillChat('What are the termination conditions?')" style="margin-right:6px">Termination?</button>
+      <button class="chip" onclick="prefillChat('What is the security deposit amount?')" style="margin-right:6px">Security deposit?</button>
+      <button class="chip" onclick="prefillChat('What happens if I break the contract early?')" style="margin-right:6px">Early exit?</button>
+      <button class="chip" onclick="prefillChat('Are there any non-compete clauses?')">Non-compete?</button>
+    </div>
+
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <textarea
+          id="chat-input"
+          class="chat-input"
+          rows="2"
+          placeholder="Ask anything about your document… (Enter to send, Shift+Enter for new line)"
+        ></textarea>
+        <button id="send-chat-btn" class="btn btn-primary">Send ➤</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;font-size:0.8rem;color:var(--text-muted)">
+      ℹ️ Answers are based only on the uploaded document. This is not legal advice.
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 4 – Compare Versions
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-compare" class="tab-panel">
+    <h2 class="section-title">Compare Two Contract Versions</h2>
+    <p class="section-subtitle">
+      Upload the original and revised version to see exactly what changed and whether it's in your favor.
+    </p>
+
+    <div class="compare-grid" style="margin-bottom:24px">
+      <!-- Version 1 -->
+      <div>
+        <div style="font-weight:600;margin-bottom:10px;color:var(--danger)">📄 Version 1 (Original)</div>
+        <div id="upload-zone-2a" class="upload-zone" style="padding:40px 20px"
+             onclick="document.getElementById('file-input-cmp1').click()">
+          <input type="file" id="file-input-cmp1" accept=".pdf" style="display:none"
+                 onchange="handleCmpFile(this.files[0],'v1')" />
+          <div class="upload-icon" style="font-size:2rem">📂</div>
+          <p>Upload original PDF</p>
+        </div>
+        <div id="cmp-doc1-name" style="margin-top:8px;color:var(--primary);font-size:0.85rem;font-weight:500"></div>
+        <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted)">
+          💡 The document from Tab 1 is pre-loaded here as Version 1 if available.
+        </div>
+      </div>
+
+      <!-- Version 2 -->
+      <div>
+        <div style="font-weight:600;margin-bottom:10px;color:var(--success)">📄 Version 2 (Revised)</div>
+        <div class="upload-zone" style="padding:40px 20px" id="upload-zone-2"
+             onclick="document.getElementById('file-input-2').click()">
+          <input type="file" id="file-input-2" accept=".pdf" />
+          <div class="upload-icon" style="font-size:2rem">📂</div>
+          <p>Upload revised PDF</p>
+        </div>
+        <div id="doc2-name" style="margin-top:8px;color:var(--success);font-size:0.85rem;font-weight:500"></div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-bottom:28px">
+      <button id="compare-btn" class="btn btn-primary" disabled>
+        ⚖️ Compare Versions
+      </button>
+    </div>
+
+    <div id="compare-results"></div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     Footer
+═══════════════════════════════════════════════════════════ -->
+<footer style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;position:relative;z-index:1">
+  <p>⚖️ <strong>LexAI</strong> — Free AI Legal Document Scanner</p>
+  <p style="margin-top:4px">Powered by Groq · No subscription · No data stored · Open source</p>
+  <p style="margin-top:8px;font-size:0.75rem;opacity:0.6">
+    ⚠️ This tool provides informational analysis only and is not a substitute for professional legal advice.
+  </p>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Scripts
+═══════════════════════════════════════════════════════════ -->
+<script src="pdf-handler.js"></script>
+<script src="groq.js"></script>
+<script src="app.js"></script>
+<script>
+  // Extra helper for compare tab upload
+  async function handleCmpFile(file, version) {
+    if (!file) return;
+    const err = validatePDFFile(file);
+    if (err) { showToast(err, 'error'); return; }
+    try {
+      const { text } = await extractTextFromPDF(file);
+      if (version === 'v1') {
+        state.docText = text;
+        state.docName = file.name;
+        document.getElementById('cmp-doc1-name').textContent = '📄 ' + file.name;
+      }
+    } catch(e) {
+      showToast('Failed to parse: ' + e.message, 'error');
+    }
+  }
+
+  // Prefill chat input
+  function prefillChat(text) {
+    document.getElementById('chat-input').value = text;
+    document.getElementById('chat-input').focus();
+  }
+
+  // When results tab becomes active, hide placeholder if results exist
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver(() => {
+      const hasClauses = state.clauses.length > 0;
+      const placeholder = document.getElementById('results-placeholder');
+      if (placeholder) placeholder.style.display = hasClauses ? 'none' : 'block';
+      const resultsArea = document.getElementById('results-area');
+      if (resultsArea) resultsArea.style.display = hasClauses ? 'block' : 'none';
+    });
+
+    // Observe tab switch
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.tab === 'tab-results') {
+          const hasClauses = state.clauses.length > 0;
+          document.getElementById('results-placeholder').style.display = hasClauses ? 'none' : 'block';
+          document.getElementById('results-area').style.display = hasClauses ? 'block' : 'none';
+        }
+        // Auto-fill compare tab version 1 from main doc
+        if (btn.dataset.tab === 'tab-compare' && state.docName) {
+          document.getElementById('cmp-doc1-name').textContent = '📄 ' + state.docName + ' (from Tab 1)';
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
